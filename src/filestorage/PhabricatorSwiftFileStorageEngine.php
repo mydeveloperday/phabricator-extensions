@@ -25,16 +25,19 @@ final class PhabricatorSwiftFileStorageEngine
   }
 
   public function canWriteFiles() {
+    $enabled = PhabricatorEnv::getEnvConfig('storage.swift.enabled');
     $container = PhabricatorEnv::getEnvConfig('storage.swift.container');
     $account = PhabricatorEnv::getEnvConfig('storage.swift.account');
+    $user = PhabricatorEnv::getEnvConfig('storage.swift.user');
     $key = PhabricatorEnv::getEnvConfig('storage.swift.key');
     $endpoint = PhabricatorEnv::getEnvConfig('storage.swift.endpoint');
 
-    return (strlen($container) &&
+    return ($enabled &&
+      strlen($container) &&
       strlen($account) &&
+      strlen($user) &&
       strlen($key) &&
       strlen($endpoint));
-
   }
 
 
@@ -147,6 +150,29 @@ final class PhabricatorSwiftFileStorageEngine
     return $container;
   }
 
+  public function authenticate($endpoint, $user, $key) {
+    $cache = PhabricatorCaches::getRuntimeCache();
+    $auth_token = $cache->getKey('storage.swift.auth-token', false);
+    if ($auth_token) {
+      return new PhutilOpaqueEnvelope($auth_token);
+    }
+
+    $uri = id(new PhutilURI($endpoint))
+      ->setPath('/auth/v1.0');
+    $future = id(new HTTPSFuture($uri))
+      ->setMethod("GET");
+
+    $future->addHeader('X-Auth-User', $user);
+    $future->addHeader('X-Auth-Key', $key);
+
+    list($status, $body, $headers) = $future->resolve();
+    $auth_token = self::getHeader($headers, 'X-Auth-Token');
+    if (!$auth_token) {
+      throw new PhutilSwiftException(pht('Swift Auth Token request failure'));
+    }
+
+    return new PhutilOpaqueEnvelope($auth_token);
+  }
   /**
    * Create a new swift API object.
    *
@@ -155,12 +181,16 @@ final class PhabricatorSwiftFileStorageEngine
   private function newSwiftAPI() {
     $container = PhabricatorEnv::getEnvConfig('storage.swift.container');
     $account = PhabricatorEnv::getEnvConfig('storage.swift.account');
+    $user = PhabricatorEnv::getEnvConfig('storage.swift.user');
     $key = PhabricatorEnv::getEnvConfig('storage.swift.key');
     $endpoint = PhabricatorEnv::getEnvConfig('storage.swift.endpoint');
 
+    $auth_token = $this->authenticate($endpoint, $user, $key);
+
     return id(new PhutilSwiftFuture())
       ->setAccount($account)
-      ->setSecretKey(new PhutilOpaqueEnvelope($key))
+      ->setAuthToken($auth_token)
+      ->setUserAndKey($user, new PhutilOpaqueEnvelope($key))
       ->setEndpoint($endpoint)
       ->setContainer($container);
   }

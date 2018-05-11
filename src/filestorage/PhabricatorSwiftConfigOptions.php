@@ -21,24 +21,30 @@ final class PhabricatorSwiftConfigOptions
 
   public function getOptions() {
     return array(
+
+      $this->newOption('storage.swift.enabled', 'bool', false)
+        ->setSummary(pht('Enable the swift storage engine.')),
+
       $this->newOption('storage.swift.account', 'string', 'phab')
-        ->addExample('phab', pht('Swift account'))
-        ->setDescription(pht('Swift account.')),
+        ->setSummary(pht('The swift storage account name.')),
 
       $this->newOption('storage.swift.container', 'string', 'phab')
-        ->addExample('phab-files', pht('Default container'))
+        ->addExample('phab', pht('Default container name prefix'))
         ->setSummary(pht('The name prefix for phabricator containers.'))
         ->setDescription(
           pht('Phabricator will create a bunch of containers '.
             'named with the given prefix followed by a short random suffix')),
 
+      $this->newOption('storage.swift.user', 'string', 'phabricator:files')
+        ->setSummary(pht('The username for swift authentication')),
+
       $this->newOption('storage.swift.key', 'string', null)
         ->setHidden(true)
-        ->setDescription(pht('Secret key for swift.')),
+        ->setSummary(pht('Secret key for swift authentication.')),
 
       $this->newOption('storage.swift.endpoint', 'string', null)
-        ->setDescription(pht('The hostname of the swift cluster frontend.'))
-        ->addExample('https://ms-fe01', pht('MediaStorage FrontEnd 01')),
+        ->setSummary(pht('The url prefix for the swift cluster frontend.'))
+        ->addExample('https://ms-fe01', pht('MediaStorage-FrontEnd01')),
     );
   }
 

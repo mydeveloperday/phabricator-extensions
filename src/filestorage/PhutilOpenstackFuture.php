@@ -10,6 +10,8 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
   private $path = '/';
   private $endpoint;
   private $data = '';
+  private $user;
+  private $authToken;
   private $headers = array();
 
   abstract public function getServiceName();
@@ -27,13 +29,26 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
     return $this->account;
   }
 
-  public function setSecretKey(PhutilOpaqueEnvelope $secret_key) {
+  public function setUserAndKey($user, PhutilOpaqueEnvelope $secret_key) {
+    $this->user = $user;
     $this->secretKey = $secret_key;
     return $this;
   }
 
+  public function getUser() {
+    return $this->user;
+  }
+
   public function getSecretKey() {
     return $this->secretKey;
+  }
+
+  public function getAuthToken() {
+    return $this->authToken;
+  }
+
+  public function setAuthToken(PhutilOpaqueEnvelope $token) {
+    $this->authToken = $token;
   }
 
   public function setEndpoint($endpoint) {
@@ -55,8 +70,7 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
   }
 
   public function setPath($path) {
-    $account = $this->getAccount();
-    $this->path = "v1/$account/$path";
+    $this->path = $path;
     return $this;
   }
 
@@ -82,6 +96,25 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
     return $this;
   }
 
+  public function authenticate() {
+    $uri = id(new PhutilURI($this->endpoint))
+      ->setPath('/auth/v1.0');
+    $future = id(new HTTPSFuture($uri))
+      ->setMethod("GET");
+
+    $user = $this->user;
+    $key = $this->getSecretKey();
+
+    $future->addHeader('X-Auth-User', $user);
+    $future->addHeader('X-Auth-Key', $key);
+
+    list($status, $body, $headers) = $future->resolve();
+    $auth_token = self::getHeader($headers, 'X-Auth-Token');
+
+    $token = new PhutilOpaqueEnvelope($auth_token);
+    $this->setAuthToken($token);
+  }
+
   protected function getProxiedFuture() {
     if (!$this->future) {
       $params = $this->getParameters();
@@ -89,9 +122,11 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
       $host = $this->getEndpoint();
       $path = $this->getPath();
       $data = $this->getData();
+      $account = $this->getAccount();
 
       $uri = id(new PhutilURI("{$host}"))
-        ->setPath($path)
+        ->setPath(
+          implode('/', array('v1',$account,$path)))
         ->setQueryParams($params);
 
       $future = id(new HTTPSFuture($uri, $data))
