@@ -165,7 +165,7 @@ class ReleaseDetailsCustomField
   private function renderTrainDeployDetails($vars) {
     extract($vars);
     return <<<EOT
-=  {icon calendar} **$year** week **$week** {icon angle-right} {icon book} [[ https://www.mediawiki.org/wiki/Special:MyLanguage/MediaWiki_$major/$wmfnum | $major-$wmfnum Changes ]] {icon angle-right} {icon git} [[/source/mediawiki/history/wmf%252F$major-$wmfnum|wmf/$major-$wmfnum  ]]
+=  {icon calendar} **$year** week **$week** {icon angle-right} {icon book} [[ https://www.mediawiki.org/wiki/Special:MyLanguage/MediaWiki_$major/$wmfnum | $major-$wmfnum Changes ]] {icon angle-right} {icon git} [[/source/mediawiki/history/wmf%252F$major.0-$wmfnum|wmf/$major.0-$wmfnum  ]]
 
 This MediaWiki Train Deployment is scheduled for the week of **$weekday, $month $monthday**:
 
@@ -205,7 +205,7 @@ EOT;
     // decompose the version and increment / decrement the minor segment to find
     // the version number for the previous and next version in this series.
     $v = explode(".", $version);
-    
+
     $minor = $v[3];
     $versions = array();
     if ($minor > 1) {
@@ -282,7 +282,7 @@ EOT;
   }
 
   private function getEndOfSeries($v, $order, $indexes, $conn, $storage) {
-    
+
     $rows = queryfx_all(
       $conn,
       'SELECT objectPHID, fieldIndex, fieldValue FROM %T
