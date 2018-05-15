@@ -166,11 +166,21 @@ final class PhabricatorSwiftFileStorageEngine
     $future->addHeader('X-Auth-Key', $key);
 
     list($status, $body, $headers) = $future->resolve();
-    $auth_token = self::getHeader($headers, 'X-Auth-Token');
+    if ($status->isError()) {
+      phlog($status);
+    }
+
+    $auth_token = BaseHttpFuture::getHeader($headers, 'X-Auth-Token');
     if (!$auth_token) {
+      $head = array();
+      foreach($headers as $header) {
+        $head[$header[0]] = $header[1];
+      }
+      phlog($head);
       throw new PhutilSwiftException(pht('Swift Auth Token request failure'));
     }
 
+    $cache->setKey('storage.swift.auth-token', $auth_token, 604800);
     return new PhutilOpaqueEnvelope($auth_token);
   }
   /**
