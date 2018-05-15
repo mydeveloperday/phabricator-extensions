@@ -49,6 +49,7 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
 
   public function setAuthToken(PhutilOpaqueEnvelope $token) {
     $this->authToken = $token;
+    return $this;
   }
 
   public function setEndpoint($endpoint) {
@@ -96,24 +97,7 @@ abstract class PhutilOpenstackFuture extends FutureProxy {
     return $this;
   }
 
-  public function authenticate() {
-    $uri = id(new PhutilURI($this->endpoint))
-      ->setPath('/auth/v1.0');
-    $future = id(new HTTPSFuture($uri))
-      ->setMethod("GET");
 
-    $user = $this->user;
-    $key = $this->getSecretKey();
-
-    $future->addHeader('X-Auth-User', $user);
-    $future->addHeader('X-Auth-Key', $key);
-
-    list($status, $body, $headers) = $future->resolve();
-    $auth_token = self::getHeader($headers, 'X-Auth-Token');
-
-    $token = new PhutilOpaqueEnvelope($auth_token);
-    $this->setAuthToken($token);
-  }
 
   protected function getProxiedFuture() {
     if (!$this->future) {
